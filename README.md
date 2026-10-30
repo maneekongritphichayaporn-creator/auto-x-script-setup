@@ -1,19 +1,18 @@
 # Auto X Script Setup
 
-โปรเจกต์ Python นี้สร้างข้อความภาษาไทยด้วย Gemini แล้วโพสต์ลง X ผ่าน X API ได้ มีทั้งการทดสอบสร้างข้อความในเครื่อง, การโพสต์ครั้งเดียว และ GitHub Actions สำหรับโพสต์ตามหัวข้อประจำวัน
+โปรเจกต์นี้ใช้ GitHub Actions สร้างข้อความภาษาไทยด้วย Gemini และโพสต์ลง X ตามหัวข้อประจำวัน โดยทำงานบน GitHub-hosted runner จึงทำงานได้แม้ปิดคอมพิวเตอร์
 
-> **ระวัง:** สคริปต์ที่โพสต์จะเผยแพร่ข้อความจริงบนบัญชี X ของคุณ ตรวจเนื้อหาและบัญชีให้ถูกต้องก่อนรัน โดยเฉพาะ `scripts/post_cyber_once.py`, `scripts/post_today_once.py`, `main.py` และการกด Run workflow ด้วยตนเอง
+> **ระวัง:** Workflow จะเผยแพร่ข้อความจริงบนบัญชี X ของคุณทุกครั้งที่ทำงาน รวมถึงเมื่อกด **Run workflow** ด้วยตนเอง
 
 ## โครงสร้างโปรเจกต์
 
 ```text
 auto-x-script-setup/
 ├── .github/workflows/       # GitHub Actions
-├── scripts/                 # สคริปต์สำหรับรันด้วยตนเอง
 ├── tests/                   # Unit tests
 ├── .env                     # API keys (ห้าม commit)
 ├── content_cycle.py         # เลือกหัวข้อตามวัน
-├── main.py                  # สร้างและโพสต์หัวข้อประจำวัน
+├── main.py                  # จุดเริ่มต้นที่ workflow ใช้โพสต์หัวข้อประจำวัน
 ├── README.md
 └── requirements.txt
 ```
@@ -31,8 +30,6 @@ auto-x-script-setup/
 | ศุกร์ | เครื่องมือและแอป |
 | เสาร์ | วิธีรับมือปัญหา |
 | อาทิตย์ | ข่าวเทคโนโลยีประจำสัปดาห์ |
-
-หัวข้อ `cybersecurity` ใช้ในสคริปต์ทดสอบโพสต์ไซเบอร์แบบครั้งเดียว ไม่ได้อยู่ในตารางหัวข้อประจำสัปดาห์
 
 ## สิ่งที่ต้องมี
 
@@ -102,41 +99,9 @@ X_ACCESS_TOKEN_SECRET=ใส่_X_Access_Token_Secret
 
 > เก็บ credentials ทั้งสี่เป็นความลับ หากเผลอเปิดเผย ให้ revoke/regenerate ใน Developer Portal แล้วอัปเดต `.env` และ GitHub Secrets ทันที
 
-## วิธีทดสอบและโพสต์
+## ตั้งค่าโพสต์อัตโนมัติด้วย GitHub Actions
 
-### สร้างข้อความในเครื่องโดยไม่โพสต์
-
-```powershell
-python -m scripts.generate_local
-```
-
-สคริปต์นี้เรียก Gemini เพื่อสร้างข้อความของหัวข้อประจำวัน แต่ **ไม่ส่งโพสต์ไป X** และจะวนสร้างซ้ำทุก 5 นาทีจนกด `Ctrl+C` ใช้ทดสอบสั้น ๆ เท่านั้น เพราะทุกครั้งที่วนจะเรียก Gemini และใช้โควตา
-
-### โพสต์ความรู้ไซเบอร์หนึ่งครั้ง
-
-```powershell
-python -m scripts.post_cyber_once
-```
-
-เรียก Gemini เพื่อสร้างโพสต์ความรู้ทั่วไปด้านการป้องกันไซเบอร์ แล้วส่งไป X **หนึ่งโพสต์** หาก Gemini ตอบข้อผิดพลาด โค้ดจะหยุดก่อนส่งโพสต์
-
-### โพสต์หัวข้อประจำวันหนึ่งครั้ง
-
-```powershell
-python -m scripts.post_today_once
-```
-
-สร้างข้อความตามหัวข้อของวันในประเทศไทย แล้วส่งไป X **หนึ่งโพสต์** เช่นเดียวกับการรัน:
-
-```powershell
-python main.py
-```
-
-ทุกครั้งที่เรียก `main.py` จะสร้างและโพสต์หนึ่งครั้ง ไม่ใช่โหมด dry-run
-
-## โพสต์ตามรอบสัปดาห์ด้วย GitHub Actions
-
-ไฟล์ `.github/workflows/daily_tweet.yml` ตั้งเวลาให้รัน `python main.py` ทุกวัน เวลา **09:00 น. ประเทศไทย** (02:00 UTC) จึงวนครบทั้งเจ็ดหัวข้อเมื่อรันต่อเนื่องครบสัปดาห์ ทั้งนี้ GitHub อาจเริ่มงานช้ากว่าเวลา cron ที่กำหนดได้
+ไฟล์ `.github/workflows/daily_tweet.yml` ตั้งเวลาให้รัน `python main.py` ทุกวัน เวลา **09:00 น. ประเทศไทย** (02:00 UTC) โดยเลือกหัวข้อตามวัน จึงวนครบทั้งเจ็ดหัวข้อเมื่อรันต่อเนื่องครบสัปดาห์ และทำงานได้แม้ปิดคอมพิวเตอร์ ทั้งนี้ GitHub อาจเริ่มงานช้ากว่าเวลา cron ที่กำหนดได้
 
 1. Push โปรเจกต์ขึ้น GitHub repository และตรวจว่า workflow อยู่บน default branch
 2. เปิด repository บน GitHub แล้วไปที่ **Settings → Secrets and variables → Actions**
@@ -151,17 +116,17 @@ python main.py
    | `X_ACCESS_TOKEN_SECRET` | X Access Token Secret |
 
 4. ไปที่แท็บ **Actions** แล้วเลือก workflow **Daily Auto Tweet** เพื่อตรวจสอบสถานะ
-5. ต้องการทดสอบด้วยตนเอง ให้กด **Run workflow** — การทำเช่นนี้จะโพสต์จริงหนึ่งโพสต์ทันที
+5. ตรวจสอบสถานะการทำงานและ log ในแท็บ **Actions** การกด **Run workflow** จะสั่งทำงานทันทีและโพสต์จริงหนึ่งโพสต์
 
 GitHub Actions ใช้ Secrets ที่ตั้งไว้แทนไฟล์ `.env` และ workflow นี้ต้องการเพียงสิทธิ์ `contents: read` สำหรับ checkout โค้ด
 
 ## ข้อผิดพลาดที่พบบ่อย
 
-- **Gemini HTTP 429**: อาจชนขีดจำกัดคำขอ, token, โควตารายวัน, billing หรือข้อจำกัดของเครื่องมือค้นหา ตรวจหน้า [Gemini rate limits](https://ai.google.dev/gemini-api/docs/rate-limits) และ Usage ของโปรเจกต์ อย่าปล่อย `scripts.generate_local` วนทิ้งไว้
+- **Gemini HTTP 429**: อาจชนขีดจำกัดคำขอ, token, โควตารายวัน, billing หรือข้อจำกัดของเครื่องมือค้นหา ตรวจหน้า [Gemini rate limits](https://ai.google.dev/gemini-api/docs/rate-limits) และ Usage ของโปรเจกต์
 - **Gemini HTTP 503**: โมเดลอาจมีผู้ใช้งานหนาแน่นชั่วคราว ลองใหม่ภายหลัง ข้อผิดพลาดนี้เกิดก่อนขั้นตอนโพสต์ X
 - **X HTTP 401/403**: ตรวจว่า credentials ถูกต้อง ยังใช้งานได้ และ Access Token ถูกสร้างหลังตั้งสิทธิ์ **Read and write**
 - **Missing required environment variable**: ตรวจชื่อใน `.env` หรือ GitHub Secrets ให้ตรงตามตัวอย่างทุกตัว
-- **โพสต์ผิดหัวข้อหรือโพสต์ซ้ำ**: ตรวจวัน/เขตเวลาและ workflow run history ก่อนรันซ้ำ เพราะการรันด้วยตนเองก็สร้างโพสต์จริงได้
+- **โพสต์ผิดหัวข้อหรือโพสต์ซ้ำ**: ตรวจวัน/เขตเวลาและ workflow run history ก่อนกด **Run workflow** ซ้ำ เพราะแต่ละ run จะสร้างโพสต์จริง
 
 ## ทดสอบตารางหัวข้อ
 
