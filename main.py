@@ -1,11 +1,13 @@
+import argparse
+import json
 import os
 from datetime import date
 from typing import TypedDict
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
 import tweepy
 from dotenv import load_dotenv
-from google import genai
-from google.genai import types
 
 from content_cycle import thailand_today, topic_for_date
 
@@ -18,41 +20,42 @@ class XCredentials(TypedDict):
 
 
 MAX_POST_LENGTH = 280
-GEMINI_MODEL = "gemini-3.8-flash"
+MAX_GENERATION_TOKENS = 1200
+OPENROUTER_MODEL = "openrouter/free"
+OPENROUTER_CHAT_COMPLETIONS_URL = "https://openrouter.ai/api/v1/chat/completions"
 TOPIC_PROMPTS = {
-    "technology_ai": (
-        "แนะนำ AI หรือตัวช่วยทำงานที่มีประโยชน์ หรือเทคโนโลยีใหม่ๆ พร้อมบอกจุดเด่นสั้นๆ "
-        "หรือแชร์คีย์เวิร์ด/Prompt เด็ดประจำสัปดาห์ที่นำไปใช้ได้จริง"
+    "technology": (
+        "เล่าเรื่องเทคโนโลยีน่ารู้ อธิบายหลักการหรือประโยชน์ให้เข้าใจง่าย "
+        "เลือกข้อเท็จจริงที่ไม่ต้องอาศัยข้อมูลข่าวล่าสุด"
+    ),
+    "ai": (
+        "เล่าเรื่อง AI น่ารู้ เช่น แนวคิด การใช้งานอย่างรับผิดชอบ หรือข้อจำกัด "
+        "อธิบายให้เข้าใจง่ายและไม่กล่าวอ้างเกินจริง"
+    ),
+    "cyber_threats": (
+        "อธิบายภัยทางไซเบอร์ที่คนทั่วไปควรรู้ เช่น phishing, มัลแวร์ หรือการขโมยบัญชี "
+        "เน้นสัญญาณเตือนและผลกระทบ ไม่ให้ขั้นตอนโจมตีหรือวิธีทำอันตราย"
+    ),
+    "scams": (
+        "ยกตัวอย่างรูปแบบกลโกงที่พบได้ทั่วไป เช่น แอบอ้างเป็นเจ้าหน้าที่หรือหลอกลงทุน "
+        "ช่วยให้ผู้อ่านสังเกตสัญญาณเตือน โดยไม่สร้างข้อความหลอกลวงที่นำไปใช้จริงได้"
+    ),
+    "scam_prevention": (
+        "แนะนำวิธีป้องกัน scammer ที่ทำได้จริง เช่น หยุดตรวจสอบก่อนโอน "
+        "ไม่กดลิงก์ที่น่าสงสัย และติดต่อหน่วยงานผ่านช่องทางทางการ"
+    ),
+    "hacking_101": (
+        "สอนแนวคิดพื้นฐานด้าน cybersecurity หรือ hacking ในเชิงป้องกัน "
+        "เช่น หลักการยืนยันตัวตน สิทธิ์การเข้าถึง หรือการทำงานของเครือข่าย "
+        "เน้นการเรียนรู้ในระบบของตนเองหรือแล็บที่ได้รับอนุญาตเท่านั้น "
+        "ห้ามสอนเจาะระบบจริง ขโมยข้อมูล หลบเลี่ยงการตรวจจับ หรือให้ขั้นตอนโจมตี"
     ),
     "thai_law": (
-        "เล่าสิทธิที่ควรรู้หรือข้อกฎหมายไทยใกล้ตัว เช่น สัญญาง่ายๆ "
-        "กฎหมายไซเบอร์ หรือลิขสิทธิ์ อธิบายเป็นข้อมูลทั่วไป ไม่ใช่คำปรึกษากฎหมาย "
-        "และอย่าฟันธงหากตรวจสอบแหล่งข้อมูลทางการไม่ได้"
-    ),
-    "conversation_question": (
-        "ตั้งคำถามชวนคิดที่ตอบง่ายและชวนให้คนมาแสดงความคิดเห็น เกี่ยวกับเทคโนโยลีหรือ Cybersecurity "
-        "เช่น 'คุณเคยเจอข้อความหลอกลวงทางออนไลน์ไหม? แชร์ประสบการณ์ของคุณ!' "
-        "ไม่ต้องเฉลยคำถาม"
-    ),
-    "general_knowledge": (
-        "เล่าเกร็ดความรู้หรือ Fact จริงที่น่าประหลาดใจเกี่ยวกับ Cybersecurity, AI, Technology, หรือวิทยาศาสตร์ "
-        "หรือประวัติศาสตร์ ใช้ภาษาย่อยง่ายและเลือกเรื่องที่ตรวจสอบได้"
-    ),
-    "tools_apps": (
-        "แนะนำแอป Extension เบราว์เซอร์ หรือเว็บไซต์ฟรีที่มีประโยชน์ "
-        "บอกว่าใช้ช่วยอะไรและเหมาะกับใคร ห้ามกล่าวอ้างว่าใช้ฟรีหากตรวจสอบไม่ได้"
-    ),
-    "coping_methods": (
-        "แนะนำวิธีรับมือปัญหาภัยไซเบอร์ที่ทำได้จริงและปลอดภัย เช่น แก๊งคอลเซ็นเตอร์ "
-        "ความเครียด หรือการบริหารเวลา"
-    ),
-    "weekly_news": (
-        "ค้นหาและสรุป 3 ข่าวหรือเทรนด์ใหญ่ด้านเทคโนโลยี ไอที หรือ AI "
-        "ที่เกิดขึ้นในสัปดาห์นี้ จบในโพสต์เดียว ระบุประเด็นให้แยกกันชัดเจน "
-        "ห้ามแต่งข่าวหรือวันที่ขึ้นเอง"
+        "ให้ความรู้ทั่วไปเกี่ยวกับกฎหมายไทยด้านดิจิทัล เช่น พ.ร.บ.คอมพิวเตอร์ หรือ PDPA "
+        "ไม่มีการค้นเว็บ จึงห้ามระบุมาตรา โทษ หรือรายละเอียดที่ไม่มั่นใจ "
+        "ไม่ใช่คำปรึกษากฎหมาย และควรแนะนำให้ตรวจสอบข้อมูลล่าสุดจากแหล่งทางการ"
     ),
 }
-GROUNDED_TOPICS = {"technology_ai", "thai_law", "tools_apps", "weekly_news"}
 
 
 def required_env(name: str) -> str:
@@ -62,40 +65,99 @@ def required_env(name: str) -> str:
     return value
 
 
-def generate_post(gemini_api_key: str, topic: str, current_date: date) -> str:
+def generate_post(openrouter_api_key: str, topic: str, current_date: date) -> str:
     if topic not in TOPIC_PROMPTS:
         raise ValueError(f"Unknown content topic: {topic}")
 
-    ai_client = genai.Client(
-        api_key=gemini_api_key,
-        http_options=types.HttpOptions(
-            timeout=60_000,
-            retry_options=types.HttpRetryOptions(attempts=2),
-        ),
-    )
     prompt = (
         f"{TOPIC_PROMPTS[topic]} "
         f"วันที่ {current_date.isoformat()} "
         "เขียนโพสต์ภาษาไทยสำหรับ X ไม่เกิน 260 ตัวอักษร "
         "รวมแฮชแท็ก 1-2 แท็กถ้าเหมาะสม "
         "ตอบเฉพาะข้อความโพสต์ ไม่ใส่คำเกริ่นหรือ Markdown "
-        "ใช้ผลค้นหาเว็บสำหรับข้อมูลปัจจุบันและข้อกฎหมาย "
-        "หากไม่มีข้อมูลที่เชื่อถือได้ ให้เลือกประเด็นอื่นที่ตรวจสอบได้"
+        "ไม่มีการค้นเว็บ หากไม่มั่นใจในข้อเท็จจริง ให้เลือกเรื่องอื่นที่มั่นใจ"
     )
-    config = None
-    if topic in GROUNDED_TOPICS:
-        config = types.GenerateContentConfig(
-            tools=[types.Tool(google_search=types.GoogleSearch())]
-        )
+    request = Request(
+        OPENROUTER_CHAT_COMPLETIONS_URL,
+        data=json.dumps(
+            {
+                "model": OPENROUTER_MODEL,
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": MAX_GENERATION_TOKENS,
+            }
+        ).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {openrouter_api_key}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
 
-    response = ai_client.models.generate_content(
-        model=GEMINI_MODEL,
-        contents=prompt,
-        config=config,
-    )
-    tweet_text = (response.text or "").strip()
+    try:
+        with urlopen(request, timeout=60) as response:
+            response_data = json.loads(response.read().decode("utf-8"))
+    except HTTPError as exc:
+        error_body = exc.read().decode("utf-8", errors="replace")
+        try:
+            error_data = json.loads(error_body)
+        except json.JSONDecodeError:
+            error_data = {}
+        api_error = error_data.get("error", {}) if isinstance(error_data, dict) else {}
+        if isinstance(api_error, dict):
+            message = api_error.get("message", "")
+        elif isinstance(api_error, str):
+            message = api_error
+        else:
+            message = ""
+        if not message:
+            message = error_body or exc.reason
+        message = message.replace(openrouter_api_key, "[REDACTED]")
+        raise RuntimeError(
+            f"OpenRouter API request failed (HTTP {exc.code}): {message}"
+        ) from exc
+    except URLError as exc:
+        raise RuntimeError(f"Could not connect to OpenRouter: {exc.reason}") from exc
+
+    choices = response_data.get("choices") if isinstance(response_data, dict) else None
+    if not isinstance(choices, list) or not choices:
+        raise RuntimeError("OpenRouter returned no choices.")
+    choice = choices[0]
+    message_data = choice.get("message") if isinstance(choice, dict) else None
+    content = message_data.get("content") if isinstance(message_data, dict) else None
+    if isinstance(content, str):
+        tweet_text = content.strip()
+    elif isinstance(content, list):
+        text_parts = [
+            part["text"]
+            for part in content
+            if isinstance(part, dict)
+            and part.get("type") == "text"
+            and isinstance(part.get("text"), str)
+        ]
+        tweet_text = "".join(text_parts).strip()
+    else:
+        finish_reason = (
+            choice.get("finish_reason") if isinstance(choice, dict) else None
+        )
+        message_fields = (
+            ", ".join(sorted(message_data))
+            if isinstance(message_data, dict)
+            else "unavailable"
+        )
+        response_model = (
+            response_data.get("model", "unknown")
+            if isinstance(response_data, dict)
+            else "unknown"
+        )
+        raise RuntimeError(
+            "OpenRouter returned no text "
+            f"(model={response_model}, finish_reason={finish_reason}, "
+            f"message_fields={message_fields}). Try the request again or select "
+            "a different text-generation model. If finish_reason is 'length', "
+            "the model may have used its token budget for reasoning."
+        )
     if not tweet_text:
-        raise ValueError("Gemini returned an empty post.")
+        raise ValueError("OpenRouter returned an empty post.")
     if len(tweet_text) > MAX_POST_LENGTH:
         raise ValueError(
             f"Generated post is {len(tweet_text)} characters; "
@@ -113,12 +175,26 @@ def post_to_x(tweet_text: str, x_credentials: XCredentials) -> str:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Generate and publish a daily X post.")
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Generate and print the post without publishing it to X.",
+    )
+    args = parser.parse_args()
+
     load_dotenv()
 
-    gemini_api_key = required_env("GEMINI_API_KEY")
+    openrouter_api_key = required_env("OPENROUTER_API_KEY")
     today = thailand_today()
     topic = topic_for_date(today)
     print(f"Today's content topic: {topic}")
+
+    tweet_text = generate_post(openrouter_api_key, topic, today)
+    if args.dry_run:
+        print(f"Generated post ({len(tweet_text)} characters):")
+        print(tweet_text)
+        return
 
     x_credentials: XCredentials = {
         "consumer_key": required_env("X_API_KEY"),
@@ -126,8 +202,6 @@ def main() -> None:
         "access_token": required_env("X_ACCESS_TOKEN"),
         "access_token_secret": required_env("X_ACCESS_TOKEN_SECRET"),
     }
-
-    tweet_text = generate_post(gemini_api_key, topic, today)
     tweet_id = post_to_x(tweet_text, x_credentials)
     print(f"Successfully posted to X (ID: {tweet_id}).")
 

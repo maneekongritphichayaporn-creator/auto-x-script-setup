@@ -2,9 +2,27 @@ import unittest
 from datetime import date
 
 from content_cycle import CONTENT_TOPICS_BY_WEEKDAY, topic_for_date
+from main import TOPIC_PROMPTS
 
 
 class WeeklyTopicTests(unittest.TestCase):
+    def test_weekday_topics_match_the_requested_schedule(self) -> None:
+        self.assertEqual(
+            CONTENT_TOPICS_BY_WEEKDAY,
+            {
+                0: "technology",
+                1: "ai",
+                2: "cyber_threats",
+                3: "scams",
+                4: "scam_prevention",
+                5: "hacking_101",
+                6: "thai_law",
+            },
+        )
+
+    def test_every_scheduled_topic_has_a_generation_prompt(self) -> None:
+        self.assertEqual(set(CONTENT_TOPICS_BY_WEEKDAY.values()), set(TOPIC_PROMPTS))
+
     def test_each_weekday_uses_its_configured_topic(self) -> None:
         monday = date(2026, 10, 26)
 

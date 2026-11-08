@@ -1,6 +1,8 @@
-# Auto X Script Setup
+# Thai Tech & Cyber Safety Bot
 
-โปรเจกต์นี้ใช้ GitHub Actions สร้างข้อความภาษาไทยด้วย Gemini และโพสต์ลง X ตามหัวข้อประจำวัน โดยทำงานบน GitHub-hosted runner จึงทำงานได้แม้ปิดคอมพิวเตอร์
+> Automatically generates and publishes daily Thai-language posts about technology, AI, scams, cybersecurity, and digital law on X.
+
+โปรเจกต์นี้ใช้ GitHub Actions สร้างข้อความภาษาไทยด้วย OpenRouter (โมเดลฟรีที่เลือกให้อัตโนมัติ) และโพสต์ลง X ตามหัวข้อประจำวัน โดยทำงานบน GitHub-hosted runner จึงทำงานได้แม้ปิดคอมพิวเตอร์
 
 > **ระวัง:** Workflow จะเผยแพร่ข้อความจริงบนบัญชี X ของคุณทุกครั้งที่ทำงาน รวมถึงเมื่อกด **Run workflow** ด้วยตนเอง
 
@@ -23,22 +25,22 @@ auto-x-script-setup/
 
 | วัน | หัวข้อ |
 |---|---|
-| จันทร์ | AI และเทคโนโลยี |
-| อังคาร | กฎหมายและสิทธิใกล้ตัว |
-| พุธ | คำถามชวนแสดงความคิดเห็น |
-| พฤหัสบดี | ความรู้ทั่วไป |
-| ศุกร์ | เครื่องมือและแอป |
-| เสาร์ | วิธีรับมือปัญหา |
-| อาทิตย์ | ข่าวเทคโนโลยีประจำสัปดาห์ |
+| จันทร์ | Technology น่ารู้ |
+| อังคาร | AI น่ารู้ |
+| พุธ | ภัยทางไซเบอร์ |
+| พฤหัสบดี | Scam รอบตัว |
+| ศุกร์ | วิธีป้องกัน scammer |
+| เสาร์ | Hacker 101 (พื้นฐาน cybersecurity เชิงป้องกัน เรียนรู้เฉพาะระบบที่ได้รับอนุญาต) |
+| อาทิตย์ | กฎหมายไทย (พ.ร.บ.คอมพิวเตอร์, PDPA และด้านดิจิทัล) |
 
 ## สิ่งที่ต้องมี
 
 - Python 3.11 หรือใหม่กว่า
-- Gemini API key จาก [Google AI Studio](https://aistudio.google.com/apikey)
+- OpenRouter API key จาก [OpenRouter](https://openrouter.ai/settings/keys)
 - บัญชีและสิทธิ์ใช้งาน X Developer API สำหรับแอปที่จะโพสต์
 - ค่ารับรอง X แบบ OAuth 1.0a: API Key, API Key Secret, Access Token และ Access Token Secret
 
-โควตาและค่าใช้จ่ายของ Gemini/X ขึ้นอยู่กับโปรเจกต์ บัญชี และแผนที่ใช้งาน ตรวจสอบข้อมูลล่าสุดจากผู้ให้บริการก่อนเปิดใช้งานแบบอัตโนมัติ
+โมเดลฟรีและข้อจำกัดการใช้งานของ OpenRouter อาจเปลี่ยนแปลงได้ ตรวจสอบ [โมเดลฟรี](https://openrouter.ai/models?max_price=0) และ [ข้อจำกัดการใช้งาน](https://openrouter.ai/docs/faq#how-are-rate-limits-calculated) ก่อนเปิดใช้โพสต์อัตโนมัติ
 
 ## ติดตั้งและตั้งค่าในเครื่อง
 
@@ -59,7 +61,7 @@ python -m pip install -r requirements.txt
 สร้างไฟล์ชื่อ `.env` ที่ root ของโปรเจกต์ แล้วใส่ค่าของคุณเอง:
 
 ```dotenv
-GEMINI_API_KEY=ใส่_Gemini_API_key
+OPENROUTER_API_KEY=ใส่_OpenRouter_API_key
 X_API_KEY=ใส่_X_API_Key
 X_API_SECRET=ใส่_X_API_Key_Secret
 X_ACCESS_TOKEN=ใส่_X_Access_Token
@@ -68,14 +70,22 @@ X_ACCESS_TOKEN_SECRET=ใส่_X_Access_Token_Secret
 
 อย่าใส่เครื่องหมาย quote รอบค่า เว้นแต่จำเป็นสำหรับค่าที่มีช่องว่าง และอย่าแชร์หรือ commit ไฟล์ `.env` — ไฟล์นี้อยู่ใน `.gitignore` แล้ว
 
-## ขอ Gemini API key
+ทดสอบสร้างโพสต์โดยไม่เผยแพร่ลง X:
 
-1. เปิด [Google AI Studio – API keys](https://aistudio.google.com/apikey) และลงชื่อเข้าใช้บัญชี Google
-2. เลือกหรือสร้าง Google Cloud project ตามที่ AI Studio แสดง
-3. สร้าง API key และนำไปใส่ใน `GEMINI_API_KEY` ใน `.env`
-4. ตรวจสอบโควตา สถานะ billing และข้อจำกัดของโมเดลใน AI Studio ก่อนใช้งาน
+```powershell
+python main.py --dry-run
+```
 
-อย่าเผยแพร่ API key ใน source code, screenshot, log หรือ repository สาธารณะ รายละเอียดเพิ่มเติมอยู่ใน [Gemini API key documentation](https://ai.google.dev/gemini-api/docs/api-key).
+โหมดนี้ต้องใช้ `OPENROUTER_API_KEY` เท่านั้น ไม่ต้องตั้ง X credentials และจะแสดงข้อความที่สร้างพร้อมจำนวนตัวอักษร
+
+## ขอ OpenRouter API key
+
+1. สมัครหรือลงชื่อเข้าใช้ [OpenRouter](https://openrouter.ai/)
+2. สร้าง API key ที่หน้า [Keys](https://openrouter.ai/settings/keys)
+3. นำ key ไปใส่ใน `OPENROUTER_API_KEY` ใน `.env`
+4. โปรเจกต์ใช้ `openrouter/free` เพื่อเลือกโมเดลฟรีที่พร้อมให้บริการโดยอัตโนมัติ รุ่นที่ถูกเลือกอาจเปลี่ยนไปตามความพร้อมใช้งาน และคุณภาพ/ข้อจำกัดอาจแตกต่างกัน ตรวจสอบข้อจำกัดและจำนวนคำขอฟรีล่าสุดจาก OpenRouter
+
+อย่าเผยแพร่ API key ใน source code, screenshot, log หรือ repository สาธารณะ
 
 ## สมัครและตั้งค่า X API
 
@@ -109,7 +119,7 @@ X_ACCESS_TOKEN_SECRET=ใส่_X_Access_Token_Secret
 
    | ชื่อ Secret | ค่าที่ต้องใส่ |
    |---|---|
-   | `GEMINI_API_KEY` | Gemini API key |
+   | `OPENROUTER_API_KEY` | OpenRouter API key |
    | `X_API_KEY` | X API Key |
    | `X_API_SECRET` | X API Key Secret |
    | `X_ACCESS_TOKEN` | X Access Token |
@@ -122,8 +132,11 @@ GitHub Actions ใช้ Secrets ที่ตั้งไว้แทนไฟ�
 
 ## ข้อผิดพลาดที่พบบ่อย
 
-- **Gemini HTTP 429**: อาจชนขีดจำกัดคำขอ, token, โควตารายวัน, billing หรือข้อจำกัดของเครื่องมือค้นหา ตรวจหน้า [Gemini rate limits](https://ai.google.dev/gemini-api/docs/rate-limits) และ Usage ของโปรเจกต์
-- **Gemini HTTP 503**: โมเดลอาจมีผู้ใช้งานหนาแน่นชั่วคราว ลองใหม่ภายหลัง ข้อผิดพลาดนี้เกิดก่อนขั้นตอนโพสต์ X
+- **OpenRouter HTTP 401**: ตรวจว่า `OPENROUTER_API_KEY` ถูกต้องและยังใช้งานได้
+- **OpenRouter HTTP 402/403**: ตรวจเครดิต ยอดใช้จ่าย และข้อจำกัดของบัญชีหรือ API key
+- **OpenRouter HTTP 429**: คำขออาจชน rate limit ของ OpenRouter หรือโมเดลฟรีที่ถูกเลือก ลองใหม่ภายหลังหรือตรวจข้อจำกัดของโมเดล
+- **OpenRouter returned no text, finish_reason=length**: โมเดลที่ถูกเลือกอาจใช้ token budget ไปกับ reasoning จนไม่มีข้อความโพสต์ ลองใหม่ภายหลัง เพราะ `openrouter/free` อาจเลือกโมเดลฟรีตัวอื่น
+- **ข้อมูลกฎหมายไม่เป็นปัจจุบัน**: รุ่นฟรีนี้ไม่ได้ค้นเว็บ; โพสต์กฎหมายเป็นข้อมูลทั่วไป ไม่ใช่คำปรึกษา ควรตรวจสอบรายละเอียดล่าสุดจากแหล่งทางการ
 - **X HTTP 401/403**: ตรวจว่า credentials ถูกต้อง ยังใช้งานได้ และ Access Token ถูกสร้างหลังตั้งสิทธิ์ **Read and write**
 - **Missing required environment variable**: ตรวจชื่อใน `.env` หรือ GitHub Secrets ให้ตรงตามตัวอย่างทุกตัว
 - **โพสต์ผิดหัวข้อหรือโพสต์ซ้ำ**: ตรวจวัน/เขตเวลาและ workflow run history ก่อนกด **Run workflow** ซ้ำ เพราะแต่ละ run จะสร้างโพสต์จริง

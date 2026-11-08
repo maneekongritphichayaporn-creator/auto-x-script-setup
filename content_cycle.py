@@ -2,13 +2,13 @@ from datetime import date, datetime, timedelta, timezone
 
 
 CONTENT_TOPICS_BY_WEEKDAY = {
-    0: "technology_ai",
-    1: "thai_law",
-    2: "conversation_question",
-    3: "general_knowledge",
-    4: "tools_apps",
-    5: "coping_methods",
-    6: "weekly_news",
+    0: "technology",
+    1: "ai",
+    2: "cyber_threats",
+    3: "scams",
+    4: "scam_prevention",
+    5: "hacking_101",
+    6: "thai_law",
 }
 THAILAND_TIMEZONE = timezone(timedelta(hours=7), name="Asia/Bangkok")
 
