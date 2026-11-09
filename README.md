@@ -68,6 +68,8 @@ X_ACCESS_TOKEN=ใส่_X_Access_Token
 X_ACCESS_TOKEN_SECRET=ใส่_X_Access_Token_Secret
 ```
 
+ข้อความภาษาไทยหลังเครื่องหมาย `=` เป็นเพียงตัวอย่าง ให้แทนที่ด้วยค่าจริงจาก OpenRouter/X ตามหัวข้อด้านล่าง โดยคงชื่อทางซ้ายของ `=` ไว้ให้ตรงทุกตัว
+
 อย่าใส่เครื่องหมาย quote รอบค่า เว้นแต่จำเป็นสำหรับค่าที่มีช่องว่าง และอย่าแชร์หรือ commit ไฟล์ `.env` — ไฟล์นี้อยู่ใน `.gitignore` แล้ว
 
 ทดสอบสร้างโพสต์โดยไม่เผยแพร่ลง X:
@@ -81,9 +83,12 @@ python main.py --dry-run
 ## ขอ OpenRouter API key
 
 1. สมัครหรือลงชื่อเข้าใช้ [OpenRouter](https://openrouter.ai/)
-2. สร้าง API key ที่หน้า [Keys](https://openrouter.ai/settings/keys)
-3. นำ key ไปใส่ใน `OPENROUTER_API_KEY` ใน `.env`
-4. โปรเจกต์ใช้ `openrouter/free` เพื่อเลือกโมเดลฟรีที่พร้อมให้บริการโดยอัตโนมัติ รุ่นที่ถูกเลือกอาจเปลี่ยนไปตามความพร้อมใช้งาน และคุณภาพ/ข้อจำกัดอาจแตกต่างกัน ตรวจสอบข้อจำกัดและจำนวนคำขอฟรีล่าสุดจาก OpenRouter
+2. เปิดหน้า [Keys](https://openrouter.ai/settings/keys) แล้วเลือกสร้าง API key
+3. ตั้งชื่อ key เพื่อจำได้ว่าใช้กับโปรเจกต์นี้ (ชื่อเป็น label สำหรับคุณ ไม่ใช่ค่าที่ต้องใส่ในโค้ด) แล้วสร้าง key
+4. คัดลอกค่า API key ที่ OpenRouter แสดง แล้วนำไปใส่เป็นค่าของ `OPENROUTER_API_KEY` ใน `.env` หรือ GitHub Secret ชื่อเดียวกัน ดูขั้นตอน GitHub ด้านล่าง
+5. โปรเจกต์ใช้ `openrouter/free` เพื่อเลือกโมเดลฟรีที่พร้อมให้บริการโดยอัตโนมัติ รุ่นที่ถูกเลือกอาจเปลี่ยนไปตามความพร้อมใช้งาน และคุณภาพ/ข้อจำกัดอาจแตกต่างกัน ตรวจสอบข้อจำกัดและจำนวนคำขอฟรีล่าสุดจาก OpenRouter
+
+API key เป็นรหัสลับ ไม่ใช่ชื่อบัญชีหรือ URL หากปิดหน้าที่แสดง key แล้วคัดลอกไม่ได้ ให้สร้าง key ใหม่แทนการพยายามเดาค่า ตรวจสอบเครดิต/ข้อจำกัดของบัญชีด้วย เพราะ key ที่ถูกต้องก็อาจเรียก API ไม่ได้หากเครดิตหรือโควตาหมด
 
 อย่าเผยแพร่ API key ใน source code, screenshot, log หรือ repository สาธารณะ
 
@@ -96,14 +101,16 @@ python main.py --dry-run
 3. สร้าง Project และ App (หรือเลือก App ที่มีอยู่) ใน Developer Portal
 4. ในการตั้งค่า App เปิด **User authentication settings** และกำหนด **App permissions** เป็น **Read and write** เพื่อให้โพสต์ได้ เลือกประเภทแอปและกรอก Callback URL/Website URL ตามข้อกำหนดของพอร์ทัล หากไม่ทราบว่าจะใส่ค่าใด ให้ตรวจคู่มือ X ปัจจุบันแทนการใช้ URL ตัวอย่างที่ไม่ตรงกับแอป
 5. บันทึกการตั้งค่า จากนั้นไปที่ **Keys and tokens** และสร้างหรือ regenerate **Access Token and Secret** หลังตั้งสิทธิ์ Read and write แล้ว
-6. ใส่ credentials ทั้งสี่ค่าลง `.env` ให้ตรงกับตารางด้านล่าง
+6. ใส่ credentials ทั้งสี่ค่าลง `.env` หรือ GitHub Secrets โดยจับคู่ตามตารางนี้:
 
-| ชื่อตัวแปรใน `.env` | ชื่อ credential ใน X |
+| ชื่อตัวแปร/Secret | คัดลอกค่าจาก X Developer Portal |
 |---|---|
-| `X_API_KEY` | API Key (Consumer Key) |
-| `X_API_SECRET` | API Key Secret (Consumer Secret) |
-| `X_ACCESS_TOKEN` | Access Token |
-| `X_ACCESS_TOKEN_SECRET` | Access Token Secret |
+| `X_API_KEY` | **API Key** หรือ **Consumer Key** ในหน้า Keys and tokens ของ App |
+| `X_API_SECRET` | **API Key Secret** หรือ **Consumer Secret** ของ App เดียวกัน |
+| `X_ACCESS_TOKEN` | **Access Token** สำหรับบัญชีผู้ใช้ที่จะโพสต์ |
+| `X_ACCESS_TOKEN_SECRET` | **Access Token Secret** ที่จับคู่กับ Access Token ข้างต้น |
+
+`X_API_KEY` และ `X_API_SECRET` เป็น credentials ของ App ส่วน `X_ACCESS_TOKEN` และ `X_ACCESS_TOKEN_SECRET` เป็น credentials ของผู้ใช้ที่อนุญาตให้ App โพสต์ ต้องใช้ค่าจาก Project/App และบัญชีเดียวกับที่ต้องการโพสต์ อย่านำ Bearer Token มาใส่แทน Access Token
 
 โค้ดใช้ OAuth 1.0a user context ผ่าน Tweepy ตาม credentials เหล่านี้ ดูรายละเอียดได้ที่ [X OAuth 1.0a documentation](https://docs.x.com/fundamentals/authentication/oauth-1-0a/overview).
 
@@ -114,21 +121,27 @@ python main.py --dry-run
 ไฟล์ `.github/workflows/daily_tweet.yml` ตั้งเวลาให้รัน `python main.py` ทุกวัน เวลา **09:00 น. ประเทศไทย** (02:00 UTC) โดยเลือกหัวข้อตามวัน จึงวนครบทั้งเจ็ดหัวข้อเมื่อรันต่อเนื่องครบสัปดาห์ และทำงานได้แม้ปิดคอมพิวเตอร์ ทั้งนี้ GitHub อาจเริ่มงานช้ากว่าเวลา cron ที่กำหนดได้
 
 1. Push โปรเจกต์ขึ้น GitHub repository และตรวจว่า workflow อยู่บน default branch
-2. เปิด repository บน GitHub แล้วไปที่ **Settings → Secrets and variables → Actions**
-3. เลือก **New repository secret** และเพิ่ม secret เหล่านี้ทีละรายการ:
+2. เปิดหน้า repository บน GitHub แล้วไปที่ **Settings → Secrets and variables → Actions** (ต้องมีสิทธิ์ Admin หรือสิทธิ์จัดการ Secrets)
+3. ในส่วน **Repository secrets** เลือก **New repository secret** แล้วเพิ่มค่าทีละรายการ:
 
-   | ชื่อ Secret | ค่าที่ต้องใส่ |
+   | ช่อง **Name** (ใส่ชื่อนี้ตรงตัว) | ช่อง **Secret** (วางค่าจริงจากผู้ให้บริการ) |
    |---|---|
-   | `OPENROUTER_API_KEY` | OpenRouter API key |
-   | `X_API_KEY` | X API Key |
-   | `X_API_SECRET` | X API Key Secret |
-   | `X_ACCESS_TOKEN` | X Access Token |
-   | `X_ACCESS_TOKEN_SECRET` | X Access Token Secret |
+   | `OPENROUTER_API_KEY` | API key ที่สร้างจาก OpenRouter |
+   | `X_API_KEY` | API Key / Consumer Key ของ X App |
+   | `X_API_SECRET` | API Key Secret / Consumer Secret ของ X App |
+   | `X_ACCESS_TOKEN` | Access Token ของบัญชี X ที่จะโพสต์ |
+   | `X_ACCESS_TOKEN_SECRET` | Access Token Secret ที่คู่กับ Access Token |
+
+   กด **Add secret** หลังกรอกแต่ละรายการ แล้วทำซ้ำจนครบทั้งห้าชื่อ ข้อความในช่อง **Name** ต้องตรงตามตาราง รวมตัวพิมพ์ใหญ่และ `_` ส่วนช่อง **Secret** ให้วางเฉพาะค่าจริงที่คัดลอกจากผู้ให้บริการ ไม่ต้องใส่ `NAME=`, ไม่ต้องใส่ `$` และไม่ต้องใส่ quote
+
+   ตัวอย่าง: ในช่อง **Name** พิมพ์ `OPENROUTER_API_KEY` และในช่อง **Secret** วาง API key จาก OpenRouter (อย่าใช้ค่าตัวอย่างหรือส่ง key จริงในแชต)
 
 4. ไปที่แท็บ **Actions** แล้วเลือก workflow **Daily Auto Tweet** เพื่อตรวจสอบสถานะ
 5. ตรวจสอบสถานะการทำงานและ log ในแท็บ **Actions** การกด **Run workflow** จะสั่งทำงานทันทีและโพสต์จริงหนึ่งโพสต์
 
-GitHub Actions ใช้ Secrets ที่ตั้งไว้แทนไฟล์ `.env` และ workflow นี้ต้องการเพียงสิทธิ์ `contents: read` สำหรับ checkout โค้ด
+Workflow นี้อ่านค่าในชื่อเหล่านี้จาก **Repository secrets** โดยตรง จึงไม่ต้องสร้าง Environment หรือเพิ่ม Secrets ในหน้า **Variables** หากเคยสร้างเป็น Environment secret ให้ย้ายมาเป็น Repository secret หรือแก้ workflow ให้ระบุ Environment ด้วย GitHub Actions ใช้ Secrets ที่ตั้งไว้แทนไฟล์ `.env` ซึ่งอยู่ในคอมพิวเตอร์ของคุณ และ workflow นี้ต้องการเพียงสิทธิ์ `contents: read` สำหรับ checkout โค้ด
+
+GitHub จะไม่แสดงค่าเดิมของ Secret หลังบันทึก หากต้องแก้หรือเปลี่ยน key ให้เปิดหน้า **Actions secrets and variables** แล้วเลือกแก้ไข/ลบ Secret เดิมและเพิ่มค่าใหม่ด้วยชื่อเดิม หาก key ถูกเปิดเผย ให้ revoke หรือ regenerate ที่ OpenRouter/X ก่อน แล้วอัปเดตค่าทั้งใน `.env` และ GitHub Secret ที่เกี่ยวข้อง
 
 ## ข้อผิดพลาดที่พบบ่อย
 
@@ -136,6 +149,7 @@ GitHub Actions ใช้ Secrets ที่ตั้งไว้แทนไฟ�
 - **OpenRouter HTTP 402/403**: ตรวจเครดิต ยอดใช้จ่าย และข้อจำกัดของบัญชีหรือ API key
 - **OpenRouter HTTP 429**: คำขออาจชน rate limit ของ OpenRouter หรือโมเดลฟรีที่ถูกเลือก ลองใหม่ภายหลังหรือตรวจข้อจำกัดของโมเดล
 - **OpenRouter returned no text, finish_reason=length**: โมเดลที่ถูกเลือกอาจใช้ token budget ไปกับ reasoning จนไม่มีข้อความโพสต์ ลองใหม่ภายหลัง เพราะ `openrouter/free` อาจเลือกโมเดลฟรีตัวอื่น
+- **Generated post is too long**: โปรแกรมขอให้สร้างโพสต์ไม่เกิน 140 ตัวอักษร และจะลองสั่งย่อให้อีกหนึ่งครั้ง หากยังยาวเกินให้ลองรันใหม่หรือเปลี่ยนโมเดลที่ใช้สร้างข้อความ
 - **ข้อมูลกฎหมายไม่เป็นปัจจุบัน**: รุ่นฟรีนี้ไม่ได้ค้นเว็บ; โพสต์กฎหมายเป็นข้อมูลทั่วไป ไม่ใช่คำปรึกษา ควรตรวจสอบรายละเอียดล่าสุดจากแหล่งทางการ
 - **X HTTP 401/403**: ตรวจว่า credentials ถูกต้อง ยังใช้งานได้ และ Access Token ถูกสร้างหลังตั้งสิทธิ์ **Read and write**
 - **Missing required environment variable**: ตรวจชื่อใน `.env` หรือ GitHub Secrets ให้ตรงตามตัวอย่างทุกตัว
