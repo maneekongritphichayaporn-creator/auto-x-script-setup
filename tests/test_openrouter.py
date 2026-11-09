@@ -2,12 +2,13 @@ import json
 import unittest
 from datetime import date
 from io import BytesIO
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from urllib.error import HTTPError
 
 from main import (
-    OPENROUTER_CHAT_COMPLETIONS_URL,
     MAX_GENERATION_TOKENS,
+    MAX_GENERATED_POST_LENGTH,
+    OPENROUTER_CHAT_COMPLETIONS_URL,
     OPENROUTER_MODEL,
     generate_post,
 )
@@ -17,6 +18,16 @@ class OpenRouterTests(unittest.TestCase):
     def setUp(self) -> None:
         self.api_key = "test-api-key"
         self.today = date(2026, 11, 8)
+
+    @staticmethod
+    def openrouter_response(content: str) -> MagicMock:
+        response = MagicMock()
+        response.__enter__.return_value = BytesIO(
+            json.dumps({"choices": [{"message": {"content": content}}]}).encode(
+                "utf-8"
+            )
+        )
+        return response
 
     @patch("main.urlopen")
     def test_generate_post_uses_openrouter_and_returns_text(self, mock_urlopen) -> None:
@@ -96,15 +107,31 @@ class OpenRouterTests(unittest.TestCase):
             generate_post(self.api_key, "technology", self.today)
 
     @patch("main.urlopen")
-    def test_generate_post_rejects_posts_over_x_limit(self, mock_urlopen) -> None:
-        mock_response = BytesIO(
-            json.dumps(
-                {"choices": [{"message": {"content": "ก" * 281}}]}
-            ).encode("utf-8")
-        )
-        mock_urlopen.return_value.__enter__.return_value = mock_response
+    def test_generate_post_retries_oversized_post(self, mock_urlopen) -> None:
+        mock_urlopen.side_effect = [
+            self.openrouter_response("ก" * 304),
+            self.openrouter_response("โพสต์ฉบับย่อ"),
+        ]
 
-        with self.assertRaisesRegex(ValueError, "281 characters"):
+        self.assertEqual(
+            generate_post(self.api_key, "technology", self.today), "โพสต์ฉบับย่อ"
+        )
+        self.assertEqual(mock_urlopen.call_count, 2)
+        retry_payload = json.loads(mock_urlopen.call_args.args[0].data)
+        self.assertEqual(retry_payload["messages"][-1]["role"], "user")
+        self.assertIn(
+            str(MAX_GENERATED_POST_LENGTH),
+            retry_payload["messages"][-1]["content"],
+        )
+
+    @patch("main.urlopen")
+    def test_generate_post_rejects_oversized_post_after_retry(self, mock_urlopen) -> None:
+        mock_urlopen.side_effect = [
+            self.openrouter_response("ก" * 281),
+            self.openrouter_response("ข" * 281),
+        ]
+
+        with self.assertRaisesRegex(ValueError, "after 2 attempts"):
             generate_post(self.api_key, "technology", self.today)
 
     @patch("main.urlopen")
