@@ -1,9 +1,6 @@
 name: Daily Auto Tweet
 
 on:
-  schedule:
-    # 02:00 UTC is 09:00 in Thailand (UTC+7).
-    - cron: "0 2 * * *"
   workflow_dispatch:
 
 permissions:

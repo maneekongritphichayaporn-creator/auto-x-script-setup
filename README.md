@@ -1,8 +1,8 @@
-# Thai Tech & Cyber Safety Bot
+# Auto X SCRIPT SETUP
 
 > Automatically generates and publishes daily Thai-language posts about technology, AI, scams, cybersecurity, and digital law on X.
 
-โปรเจกต์นี้ใช้ GitHub Actions สร้างข้อความภาษาไทยด้วย OpenRouter (โมเดลฟรีที่เลือกให้อัตโนมัติ) และโพสต์ลง X ตามหัวข้อประจำวัน โดยทำงานบน GitHub-hosted runner จึงทำงานได้แม้ปิดคอมพิวเตอร์
+โปรเจกต์นี้ใช้ GitHub Actions สร้างข้อความภาษาไทยด้วย OpenRouter (โมเดลฟรีที่เลือกให้อัตโนมัติ) และโพสต์ลง X ตามหัวข้อประจำวันเมื่อสั่งรันด้วยตนเอง โดยทำงานบน GitHub-hosted runner จึงไม่ต้องเปิดคอมพิวเตอร์ทิ้งไว้
 
 > **ระวัง:** Workflow จะเผยแพร่ข้อความจริงบนบัญชี X ของคุณทุกครั้งที่ทำงาน รวมถึงเมื่อกด **Run workflow** ด้วยตนเอง
 
@@ -58,17 +58,23 @@ python -m pip install -r requirements.txt
 .venv\Scripts\activate.bat
 ```
 
-สร้างไฟล์ชื่อ `.env` ที่ root ของโปรเจกต์ แล้วใส่ค่าของคุณเอง:
+คัดลอก `.env.example` เป็นไฟล์ `.env` ที่ root ของโปรเจกต์ แล้วแทนที่ placeholder ด้วยค่าจริงของคุณ:
 
 ```dotenv
-OPENROUTER_API_KEY=ใส่_OpenRouter_API_key
-X_API_KEY=ใส่_X_API_Key
-X_API_SECRET=ใส่_X_API_Key_Secret
-X_ACCESS_TOKEN=ใส่_X_Access_Token
-X_ACCESS_TOKEN_SECRET=ใส่_X_Access_Token_Secret
+OPENROUTER_API_KEY=your_openrouter_api_key
+X_API_KEY=your_x_api_key
+X_API_SECRET=your_x_api_secret
+X_ACCESS_TOKEN=your_x_access_token
+X_ACCESS_TOKEN_SECRET=your_x_access_token_secret
 ```
 
-ข้อความภาษาไทยหลังเครื่องหมาย `=` เป็นเพียงตัวอย่าง ให้แทนที่ด้วยค่าจริงจาก OpenRouter/X ตามหัวข้อด้านล่าง โดยคงชื่อทางซ้ายของ `=` ไว้ให้ตรงทุกตัว
+ตัวอย่างคำสั่งคัดลอกใน PowerShell:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+ค่าหลังเครื่องหมาย `=` ใน `.env.example` เป็น placeholder ให้แทนที่ด้วยค่าจริงจาก OpenRouter/X ตามหัวข้อด้านล่าง โดยคงชื่อทางซ้ายของ `=` ไว้ให้ตรงทุกตัว
 
 อย่าใส่เครื่องหมาย quote รอบค่า เว้นแต่จำเป็นสำหรับค่าที่มีช่องว่าง และอย่าแชร์หรือ commit ไฟล์ `.env` — ไฟล์นี้อยู่ใน `.gitignore` แล้ว
 
@@ -116,9 +122,9 @@ API key เป็นรหัสลับ ไม่ใช่ชื่อบั�
 
 > เก็บ credentials ทั้งสี่เป็นความลับ หากเผลอเปิดเผย ให้ revoke/regenerate ใน Developer Portal แล้วอัปเดต `.env` และ GitHub Secrets ทันที
 
-## ตั้งค่าโพสต์อัตโนมัติด้วย GitHub Actions
+## ใช้งาน GitHub Actions
 
-ไฟล์ `.github/workflows/daily_tweet.yml` ตั้งเวลาให้รัน `python main.py` ทุกวัน เวลา **09:00 น. ประเทศไทย** (02:00 UTC) โดยเลือกหัวข้อตามวัน จึงวนครบทั้งเจ็ดหัวข้อเมื่อรันต่อเนื่องครบสัปดาห์ และทำงานได้แม้ปิดคอมพิวเตอร์ ทั้งนี้ GitHub อาจเริ่มงานช้ากว่าเวลา cron ที่กำหนดได้
+ไฟล์ `.github/workflows/daily_tweet.yml` ไม่มีการตั้งเวลารันอัตโนมัติ จะทำงานเมื่อเจ้าของ repository สั่ง **Run workflow** เองเท่านั้น โดยแต่ละครั้งจะสร้างและโพสต์หนึ่งข้อความจริงลง X
 
 1. Push โปรเจกต์ขึ้น GitHub repository และตรวจว่า workflow อยู่บน default branch
 2. เปิดหน้า repository บน GitHub แล้วไปที่ **Settings → Secrets and variables → Actions** (ต้องมีสิทธิ์ Admin หรือสิทธิ์จัดการ Secrets)
@@ -136,10 +142,10 @@ API key เป็นรหัสลับ ไม่ใช่ชื่อบั�
 
    ตัวอย่าง: ในช่อง **Name** พิมพ์ `OPENROUTER_API_KEY` และในช่อง **Secret** วาง API key จาก OpenRouter (อย่าใช้ค่าตัวอย่างหรือส่ง key จริงในแชต)
 
-4. ไปที่แท็บ **Actions** แล้วเลือก workflow **Daily Auto Tweet** เพื่อตรวจสอบสถานะ
-5. ตรวจสอบสถานะการทำงานและ log ในแท็บ **Actions** การกด **Run workflow** จะสั่งทำงานทันทีและโพสต์จริงหนึ่งโพสต์
+4. ไปที่แท็บ **Actions** แล้วเลือก workflow **Daily Auto Tweet**
+5. เมื่อพร้อมโพสต์ ให้กด **Run workflow** และยืนยันการรัน การสั่งงานนี้จะโพสต์จริงหนึ่งโพสต์ลง X
 
-Workflow นี้อ่านค่าในชื่อเหล่านี้จาก **Repository secrets** โดยตรง จึงไม่ต้องสร้าง Environment หรือเพิ่ม Secrets ในหน้า **Variables** หากเคยสร้างเป็น Environment secret ให้ย้ายมาเป็น Repository secret หรือแก้ workflow ให้ระบุ Environment ด้วย GitHub Actions ใช้ Secrets ที่ตั้งไว้แทนไฟล์ `.env` ซึ่งอยู่ในคอมพิวเตอร์ของคุณ และ workflow นี้ต้องการเพียงสิทธิ์ `contents: read` สำหรับ checkout โค้ด
+Workflow นี้อ่านค่าในชื่อเหล่านี้จาก **Repository secrets** โดยตรง จึงไม่ต้องสร้าง Environment หรือเพิ่ม Secrets ในหน้า **Variables** หากเคยสร้างเป็น Environment secret ให้ย้ายมาเป็น Repository secret หรือแก้ workflow ให้ระบุ Environment ด้วย GitHub Actions ใช้ Secrets ที่ตั้งไว้แทนไฟล์ `.env` ซึ่งอยู่ในคอมพิวเตอร์ของคุณ และ workflow นี้ต้องการเพียงสิทธิ์ `contents: read` สำหรับ checkout โค้ด ผู้ที่ clone โปรเจกต์ไปใช้ต้อง push ไปยัง repository ของตน เปิดใช้งาน GitHub Actions และตั้ง Secrets ของตนเองก่อน จึงจะสั่ง Run workflow ได้
 
 GitHub จะไม่แสดงค่าเดิมของ Secret หลังบันทึก หากต้องแก้หรือเปลี่ยน key ให้เปิดหน้า **Actions secrets and variables** แล้วเลือกแก้ไข/ลบ Secret เดิมและเพิ่มค่าใหม่ด้วยชื่อเดิม หาก key ถูกเปิดเผย ให้ revoke หรือ regenerate ที่ OpenRouter/X ก่อน แล้วอัปเดตค่าทั้งใน `.env` และ GitHub Secret ที่เกี่ยวข้อง
 
