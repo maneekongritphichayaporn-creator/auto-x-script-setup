@@ -19,8 +19,9 @@ class XCredentials(TypedDict):
     access_token_secret: str
 
 
-MAX_POST_LENGTH = 280
+MAX_GENERATED_POST_LENGTH = 140
 MAX_GENERATION_TOKENS = 1200
+MAX_GENERATION_ATTEMPTS = 2
 OPENROUTER_MODEL = "openrouter/free"
 OPENROUTER_CHAT_COMPLETIONS_URL = "https://openrouter.ai/api/v1/chat/completions"
 TOPIC_PROMPTS = {
@@ -72,98 +73,123 @@ def generate_post(openrouter_api_key: str, topic: str, current_date: date) -> st
     prompt = (
         f"{TOPIC_PROMPTS[topic]} "
         f"วันที่ {current_date.isoformat()} "
-        "เขียนโพสต์ภาษาไทยสำหรับ X ไม่เกิน 260 ตัวอักษร "
+        f"เขียนโพสต์ภาษาไทยสำหรับ X ไม่เกิน {MAX_GENERATED_POST_LENGTH} ตัวอักษร "
         "รวมแฮชแท็ก 1-2 แท็กถ้าเหมาะสม "
         "ตอบเฉพาะข้อความโพสต์ ไม่ใส่คำเกริ่นหรือ Markdown "
         "ไม่มีการค้นเว็บ หากไม่มั่นใจในข้อเท็จจริง ให้เลือกเรื่องอื่นที่มั่นใจ"
     )
-    request = Request(
-        OPENROUTER_CHAT_COMPLETIONS_URL,
-        data=json.dumps(
-            {
-                "model": OPENROUTER_MODEL,
-                "messages": [{"role": "user", "content": prompt}],
-                "max_tokens": MAX_GENERATION_TOKENS,
-            }
-        ).encode("utf-8"),
-        headers={
-            "Authorization": f"Bearer {openrouter_api_key}",
-            "Content-Type": "application/json",
-        },
-        method="POST",
-    )
+    messages = [{"role": "user", "content": prompt}]
 
-    try:
-        with urlopen(request, timeout=60) as response:
-            response_data = json.loads(response.read().decode("utf-8"))
-    except HTTPError as exc:
-        error_body = exc.read().decode("utf-8", errors="replace")
+    for attempt in range(MAX_GENERATION_ATTEMPTS):
+        request = Request(
+            OPENROUTER_CHAT_COMPLETIONS_URL,
+            data=json.dumps(
+                {
+                    "model": OPENROUTER_MODEL,
+                    "messages": messages,
+                    "max_tokens": MAX_GENERATION_TOKENS,
+                }
+            ).encode("utf-8"),
+            headers={
+                "Authorization": f"Bearer {openrouter_api_key}",
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+
         try:
-            error_data = json.loads(error_body)
-        except json.JSONDecodeError:
-            error_data = {}
-        api_error = error_data.get("error", {}) if isinstance(error_data, dict) else {}
-        if isinstance(api_error, dict):
-            message = api_error.get("message", "")
-        elif isinstance(api_error, str):
-            message = api_error
-        else:
-            message = ""
-        if not message:
-            message = error_body or exc.reason
-        message = message.replace(openrouter_api_key, "[REDACTED]")
-        raise RuntimeError(
-            f"OpenRouter API request failed (HTTP {exc.code}): {message}"
-        ) from exc
-    except URLError as exc:
-        raise RuntimeError(f"Could not connect to OpenRouter: {exc.reason}") from exc
+            with urlopen(request, timeout=60) as response:
+                response_data = json.loads(response.read().decode("utf-8"))
+        except HTTPError as exc:
+            error_body = exc.read().decode("utf-8", errors="replace")
+            try:
+                error_data = json.loads(error_body)
+            except json.JSONDecodeError:
+                error_data = {}
+            api_error = (
+                error_data.get("error", {}) if isinstance(error_data, dict) else {}
+            )
+            if isinstance(api_error, dict):
+                message = api_error.get("message", "")
+            elif isinstance(api_error, str):
+                message = api_error
+            else:
+                message = ""
+            if not message:
+                message = error_body or exc.reason
+            message = message.replace(openrouter_api_key, "[REDACTED]")
+            raise RuntimeError(
+                f"OpenRouter API request failed (HTTP {exc.code}): {message}"
+            ) from exc
+        except URLError as exc:
+            raise RuntimeError(f"Could not connect to OpenRouter: {exc.reason}") from exc
 
-    choices = response_data.get("choices") if isinstance(response_data, dict) else None
-    if not isinstance(choices, list) or not choices:
-        raise RuntimeError("OpenRouter returned no choices.")
-    choice = choices[0]
-    message_data = choice.get("message") if isinstance(choice, dict) else None
-    content = message_data.get("content") if isinstance(message_data, dict) else None
-    if isinstance(content, str):
-        tweet_text = content.strip()
-    elif isinstance(content, list):
-        text_parts = [
-            part["text"]
-            for part in content
-            if isinstance(part, dict)
-            and part.get("type") == "text"
-            and isinstance(part.get("text"), str)
-        ]
-        tweet_text = "".join(text_parts).strip()
-    else:
-        finish_reason = (
-            choice.get("finish_reason") if isinstance(choice, dict) else None
+        choices = (
+            response_data.get("choices") if isinstance(response_data, dict) else None
         )
-        message_fields = (
-            ", ".join(sorted(message_data))
-            if isinstance(message_data, dict)
-            else "unavailable"
+        if not isinstance(choices, list) or not choices:
+            raise RuntimeError("OpenRouter returned no choices.")
+        choice = choices[0]
+        message_data = choice.get("message") if isinstance(choice, dict) else None
+        content = message_data.get("content") if isinstance(message_data, dict) else None
+        if isinstance(content, str):
+            tweet_text = content.strip()
+        elif isinstance(content, list):
+            text_parts = [
+                part["text"]
+                for part in content
+                if isinstance(part, dict)
+                and part.get("type") == "text"
+                and isinstance(part.get("text"), str)
+            ]
+            tweet_text = "".join(text_parts).strip()
+        else:
+            finish_reason = (
+                choice.get("finish_reason") if isinstance(choice, dict) else None
+            )
+            message_fields = (
+                ", ".join(sorted(message_data))
+                if isinstance(message_data, dict)
+                else "unavailable"
+            )
+            response_model = (
+                response_data.get("model", "unknown")
+                if isinstance(response_data, dict)
+                else "unknown"
+            )
+            raise RuntimeError(
+                "OpenRouter returned no text "
+                f"(model={response_model}, finish_reason={finish_reason}, "
+                f"message_fields={message_fields}). Try the request again or select "
+                "a different text-generation model. If finish_reason is 'length', "
+                "the model may have used its token budget for reasoning."
+            )
+        if not tweet_text:
+            raise ValueError("OpenRouter returned an empty post.")
+        if len(tweet_text) <= MAX_GENERATED_POST_LENGTH:
+            return tweet_text
+        if attempt + 1 == MAX_GENERATION_ATTEMPTS:
+            raise ValueError(
+                f"Generated post is {len(tweet_text)} characters after "
+                f"{MAX_GENERATION_ATTEMPTS} attempts; "
+                f"keep it at most {MAX_GENERATED_POST_LENGTH}."
+            )
+
+        messages.extend(
+            [
+                {"role": "assistant", "content": tweet_text},
+                {
+                    "role": "user",
+                    "content": (
+                        "ย่อโพสต์ข้างต้นให้เหลือไม่เกิน "
+                        f"{MAX_GENERATED_POST_LENGTH} ตัวอักษร โดยคงใจความสำคัญ "
+                        "ตอบเฉพาะข้อความโพสต์"
+                    ),
+                },
+            ]
         )
-        response_model = (
-            response_data.get("model", "unknown")
-            if isinstance(response_data, dict)
-            else "unknown"
-        )
-        raise RuntimeError(
-            "OpenRouter returned no text "
-            f"(model={response_model}, finish_reason={finish_reason}, "
-            f"message_fields={message_fields}). Try the request again or select "
-            "a different text-generation model. If finish_reason is 'length', "
-            "the model may have used its token budget for reasoning."
-        )
-    if not tweet_text:
-        raise ValueError("OpenRouter returned an empty post.")
-    if len(tweet_text) > MAX_POST_LENGTH:
-        raise ValueError(
-            f"Generated post is {len(tweet_text)} characters; "
-            f"X allows at most {MAX_POST_LENGTH}."
-        )
-    return tweet_text
+
+    raise RuntimeError("Post generation ended without a result.")
 
 
 def post_to_x(tweet_text: str, x_credentials: XCredentials) -> str:
